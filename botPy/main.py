@@ -1,7 +1,9 @@
 from urllib import response
 
 # formulas
-from utils.numbers import *
+# from utils.numbers import *
+from utils.integers import *
+
 
 # login key generator
 import uuid
@@ -39,20 +41,33 @@ app = TeleBot(
 @app.message_handler(commands=["start"])
 def start_command(message):
     chat = message.chat.id
-    markup_reply_resize = types.ReplyKeyboardMarkup(
-        resize_keyboard=True, one_time_keyboard=True
-    )
+    response = requests.get(api_url + f"users/{message.from_user.id}")
+    result = response.status_code
+    # нужно сделать проверку на наличие игрока в базе, на сервере должна быть отправка кода ошибки, если пользователь не найден
+    if result == 200:
+        markup_reply_resize = types.ReplyKeyboardMarkup(
+            resize_keyboard=True, one_time_keyboard=True
+        )
+        markup_reply_resize.add(
+            types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
+        )
 
-    # add BUTTONS
-    markup_reply_resize.add(types.KeyboardButton("YES"), types.KeyboardButton("NO"))
-    # helper handler (for new step)
-    msg = app.send_message(
-        chat,
-        "HELLO BOY, IT'S A LOCATION GAME BOT. YOUR LOCATION WILL NOT BE SAVED. OKAY?",
-        reply_markup=markup_reply_resize,
-    )
-    # next step handler
-    app.register_next_step_handler(msg, user_answer)
+        msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
+        app.register_next_step_handler(msg, menu_listener)
+    else:
+        # add BUTTONS
+        markup_reply_resize = types.ReplyKeyboardMarkup(
+            resize_keyboard=True, one_time_keyboard=True
+        )
+        markup_reply_resize.add(types.KeyboardButton("YES"), types.KeyboardButton("NO"))
+        # helper handler (for new step)
+        msg = app.send_message(
+            chat,
+            "HELLO BOY, IT'S A LOCATION GAME BOT. YOUR LOCATION WILL NOT BE SAVED. OKAY?",
+            reply_markup=markup_reply_resize,
+        )
+        # next step handler
+        app.register_next_step_handler(msg, user_answer)
 
 
 def user_answer(message):
@@ -87,11 +102,6 @@ def user_registration(message):
             app.send_message(
                 chat,
                 f"NAME {user_name} SAVED",
-            )
-        else:
-            app.send_message(
-                chat,
-                f"YOUR ID ALREADY EXISTS. CLEAR THE DATABASE",
             )
 
     postUserData()
@@ -145,33 +155,27 @@ def menu_listener(message):
 def start_the_game(message):
     chat = message.chat.id
     coords = {}
-    print("Starting game")
     if message.location:
-        print("GIVE MY LOCATION")
         # init coords
         coords = {
             "latitude": message.location.latitude,
             "longitude": message.location.longitude,
         }
         # new coords
-        random_distance = get_random_distance(10000, 11001)
-        new_location = point_at_distance(coords, random_distance)
+
+        new_location = point_at_distance(coords)
         coords["latitude"] = new_location["latitude"]
         coords["longitude"] = new_location["longitude"]
-        print(new_location)
         app.send_message(
             chat,
             f"POINT CREATED",
         )
 
         def post_thegame_data():
-            latitude = coords["latitude"]
-            longitude = coords["longitude"]
-
             payload = {
                 "user_id": message.from_user.id,
-                "latitude": latitude,
-                "longitude": longitude,
+                "latitude": coords["latitude"],
+                "longitude": coords["longitude"],
                 "status": "in_progress",
             }
 
@@ -230,7 +234,7 @@ def game_process(message):
                 "longitude": response_json["longitude"],
             }
             # IF USER IN AREA
-            if distance_between(user_current_coords, game_current_point) < 999:
+            if distance_between(user_current_coords, game_current_point) < 9:
                 user_current_coords = {}
                 # add buttons
                 markup_reply_resize = types.ReplyKeyboardMarkup(
@@ -245,7 +249,7 @@ def game_process(message):
 
             # IFb
             #  USER NOT IN AREA
-            if distance_between(user_current_coords, game_current_point) > 999:
+            if distance_between(user_current_coords, game_current_point) > 9:
                 # add BUTTONS
                 markup_reply_resize = types.ReplyKeyboardMarkup(
                     resize_keyboard=True, one_time_keyboard=True
@@ -318,55 +322,6 @@ def options_menu_listener(message):
         # go to menu
         msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
-
-
-# GETINFO
-@app.message_handler(commands=["get info", "info"])
-def get_user_info(message):
-    chat = message.chat.id
-
-    button_yes = types.InlineKeyboardButton(text="YES", callback_data="yes")
-    button_no = types.InlineKeyboardButton(text="NO", callback_data="no")
-
-    markup_inline = types.InlineKeyboardMarkup()
-    markup_inline.add(button_yes, button_no)
-
-    app.send_message(chat, "get user info", reply_markup=markup_inline)
-
-
-# after start YES/NO handler
-@app.callback_query_handler(func=lambda call: True)
-def answer_callback(call):
-    if call.data == "yes":
-        # add BUTTONS
-        markup_reply_resize = types.ReplyKeyboardMarkup(
-            resize_keyboard=True, one_time_keyboard=True
-        )
-        markup_reply_resize.add(
-            types.KeyboardButton("ID"),
-            types.KeyboardButton("USERNAME"),
-            types.KeyboardButton("ALL INFORMATION"),
-        )
-
-        app.send_message(
-            call.message.chat.id, "select option:", reply_markup=markup_reply_resize
-        )
-
-    elif call.data == "no":
-        app.send_message(call.message.chat.id, '"no" has been selected')
-
-
-@app.message_handler(content_types=["text"])
-def get_id_or_username(message):
-    if message.text == "ID":
-        app.send_message(message.chat.id, f"Your ID: {message.from_user.id}")
-    elif message.text == "USERNAME":
-        app.send_message(
-            message.chat.id,
-            f"Your Username: {message.from_user.first_name} {message.from_user.last_name}",
-        )
-    elif message.text == "ALL INFORMATION":
-        app.send_message(message.chat.id, f"All your information: {message.from_user}")
 
 
 app.enable_save_next_step_handlers(delay=2)

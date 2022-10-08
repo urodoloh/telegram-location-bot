@@ -107,7 +107,7 @@ def get_user_by_user_id(user_id):
         with connection.cursor() as cursor:
             cursor.execute(CREATE_USERS_TABLE)
             cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
-            user_data = cursor.fetchall()[0]
+            user_data = cursor.fetchall()
     return {"user": user_data}, 200
 
 
