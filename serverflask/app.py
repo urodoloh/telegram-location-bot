@@ -54,12 +54,14 @@ def create_user():
     user_id = data["user_id"]
     user_name = data["user_name"]
     user_login_key = data["user_login_key"]
+
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_USERS_TABLE)
             cursor.execute(
                 INSERT_USERS, (user_id, user_name, user_login_key, user_name)
             )
+
     return {
         "id": user_id,
         "message": f"User {user_name} with login_key {user_login_key} created.",
@@ -91,8 +93,9 @@ def add_thegame():
                 cursor.execute(
                     INSERT_THEGAMEDATA, (user_id, latitude, longitude, status)
                 )
+
     return {
-        "message": "the game added.",
+        "message": "the game added",
         "latitude": latitude,
         "longitude": longitude,
         "status": status,
@@ -106,9 +109,22 @@ def get_user_by_user_id(user_id):
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_USERS_TABLE)
-            cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
-            user_data = cursor.fetchall()
-    return {"user": user_data}, 200
+
+            try:
+                cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
+                id = cursor.fetchone()[0]
+
+                cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
+                name = cursor.fetchone()[1]
+
+                cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
+                login_key = cursor.fetchone()[2]
+            except:
+                id = []
+                name = []
+                login_key = []
+
+    return {"user_id": id, "name": name, "login_key": login_key}, 200
 
 
 # all users with their score
@@ -116,25 +132,50 @@ def get_user_by_user_id(user_id):
 def get_userlist():
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(CREATE_USERS_TABLE)
+
+            # cursor.execute(CREATE_USERS_TABLE)
             cursor.execute(GET_USERLIST_FROM_USERS_TABLE)
             userlist_data = cursor.fetchall()
+
     return {"userlist": userlist_data}, 200
 
 
-# user_score_chech
+# user_score_check and
 @app.get("/api/thegame/<int:user_id>")
 def get_ended_games(user_id):
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_THEGAME_TABLE)
-            cursor.execute(
-                GET_ENDED_GAMES_WHERE_USER_ID_FROM_THEGAME,
-                (user_id,),
-            )
-            ended_games = cursor.fetchall()
 
-    return {"result": ended_games}
+            try:
+                cursor.execute(
+                    GET_ENDED_GAMES_WHERE_USER_ID_FROM_THEGAME,
+                    (user_id,),
+                )
+                ended_games = cursor.fetchall()
+                cursor.execute(
+                    GET_GAMES_IN_PROGRESS_WHERE_USER_ID_FROM_THE_GAME,
+                    (user_id,),
+                )
+                latitude = cursor.fetchone()[2]
+                cursor.execute(
+                    GET_GAMES_IN_PROGRESS_WHERE_USER_ID_FROM_THE_GAME,
+                    (user_id,),
+                )
+                longitude = cursor.fetchone()[3]
+                message = "all works"
+            except:
+                ended_games = []
+                latitude = 0.0
+                longitude = 0.0
+                message = "table or id not exists"
+
+    return {
+        "score": ended_games,
+        "latitude": latitude,
+        "longitude": longitude,
+        "message": message,
+    }
 
 
 # PUT ROUTES>>>>>>>>>>>>>>>>>
@@ -147,17 +188,20 @@ def update_game__by_user_id(user_id):
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_THEGAME_TABLE)
-            cursor.execute(
-                UPDATE_THEGAMEDATA_BY_USERID,
-                (
-                    status,
-                    user_id,
-                ),
-            )
 
-            cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
-            username = cursor.fetchone()[0]
-    return {"game status has been updated for user": username, "status": status}, 200
+            try:
+                cursor.execute(
+                    UPDATE_THEGAMEDATA_BY_USERID,
+                    (
+                        status,
+                        user_id,
+                    ),
+                )
+                message = f"game status has been updated for user: {user_id}"
+            except:
+                message = "table thegame not exists"
+
+    return {"message": message, "status": status}, 200
 
 
 # DELETE ROUTES>>>>>>>>>>>>>>>
@@ -166,8 +210,14 @@ def update_game__by_user_id(user_id):
 def delete_all_tables():
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(DELETE_ALL_TABLES)
-    return {"message": "all tables deleted"}, 200
+
+            try:
+                cursor.execute(DELETE_ALL_TABLES)
+                message = "all tables deleted"
+            except:
+                message = "some of the tables no longer exist"
+
+    return {"message": message}, 200
 
 
 # delete users
@@ -175,8 +225,13 @@ def delete_all_tables():
 def delete_users_table():
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(DELETE_TABLE_USERS)
-    return {"message": "table users deleted"}, 200
+            try:
+                cursor.execute(DELETE_TABLE_USERS)
+                message = "table users has been deleted"
+            except:
+                message = "table not exists"
+
+    return {"message": message}, 200
 
 
 # delete thegame
@@ -184,8 +239,13 @@ def delete_users_table():
 def delete_thegame_table():
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(DELETE_TABLE_THEGAME)
-    return {"message": "table thegame deleted"}, 200
+            try:
+                cursor.execute(DELETE_TABLE_THEGAME)
+                message = "table thegame has been deleted"
+            except:
+                message = "table not exists"
+
+    return {"message": message}, 200
 
 
 # delete - user by id
@@ -193,9 +253,15 @@ def delete_thegame_table():
 def delete_user_by_id(user_id):
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(DELETE_USER_BY_ID_RETURN_USERNAME, (user_id,))
-            user_name = cursor.fetchone()[0]
-    return {"user has been deleted": user_name}, 200
+            try:
+                cursor.execute(DELETE_USER_BY_ID_RETURN_USERNAME, (user_id,))
+                user_name = cursor.fetchone()[0]
+                message = "user has been deleted"
+            except:
+                message = "user not exists"
+                user_name = user_id
+
+    return {message: user_name}, 200
 
 
 # delete - thegame by user_id
@@ -203,6 +269,10 @@ def delete_user_by_id(user_id):
 def delete_game_by_id(user_id):
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(DELETE_GAME_BY_USER_ID_RETURN_USER_ID, (user_id,))
-            user_name = cursor.fetchone()[0]
-    return {"game has been deleted by user_id": user_id}, 200
+            try:
+                cursor.execute(DELETE_GAME_BY_USER_ID_RETURN_USER_ID, (user_id,))
+                message = f"game has been deleted by {user_id}"
+            except:
+                message = f"user_id {user_id} not exists"
+
+    return {"message": message}, 200

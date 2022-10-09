@@ -28,7 +28,7 @@ import json
 
 
 # server url
-api_url = "http://localhost:5000/api/"
+api_url = "http://localhost:5000/api"
 
 
 # bot object init
@@ -37,24 +37,32 @@ app = TeleBot(
 )
 
 
+def menu_buttons_add(markup_reply_resize):
+    markup_reply_resize.add(
+        types.KeyboardButton("START GAME"),
+        types.KeyboardButton("OPTIONS"),
+    )
+
+
 # START
 @app.message_handler(commands=["start"])
 def start_command(message):
     chat = message.chat.id
-    response = requests.get(api_url + f"users/{message.from_user.id}")
-    result = response.status_code
-    # нужно сделать проверку на наличие игрока в базе, на сервере должна быть отправка кода ошибки, если пользователь не найден
-    if result == 200:
+
+    response = requests.get(api_url + f"/users/{message.from_user.id}")
+    response_json = response.json()
+    pretty = json.dumps(response_json, indent=4)
+    result = response_json["user_id"]
+    print(result)
+    if result == message.from_user.id:
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
         )
-        markup_reply_resize.add(
-            types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+        msg = app.send_message(chat, "HELLO AGAIN", reply_markup=markup_reply_resize)
 
-        msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
-    else:
+    if result == []:
         # add BUTTONS
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
@@ -74,7 +82,7 @@ def user_answer(message):
     chat = message.chat.id
 
     if message.text == "YES":
-        msg = app.send_message(chat, "INTER YOUR NAME")
+        msg = app.send_message(chat, "ENTER YOUR NAME")
         app.register_next_step_handler(msg, user_registration)
 
     if message.text == "NO":
@@ -89,15 +97,13 @@ def user_registration(message):
     def postUserData():
         user_id = message.from_user.id
         user_login_key = str(uuid.uuid4())
-        users_url = api_url + "users"
+        users_url = api_url + "/users"
         payload = {
             "user_name": user_name,
             "user_id": user_id,
             "user_login_key": user_login_key,
         }
         response = requests.post(users_url, json=(payload))
-        # response_json = response.json()
-        # print(response_json["status"])
         if response.status_code == 201:
             app.send_message(
                 chat,
@@ -109,9 +115,7 @@ def user_registration(message):
     markup_reply_resize = types.ReplyKeyboardMarkup(
         resize_keyboard=True, one_time_keyboard=True
     )
-    markup_reply_resize.add(
-        types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-    )
+    menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
 
     msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
     app.register_next_step_handler(msg, menu_listener)
@@ -143,6 +147,7 @@ def menu_listener(message):
             types.KeyboardButton("SHOW MY SCORE"),
             types.KeyboardButton("GET ME MY LOGIN KEY"),
             types.KeyboardButton("GO TO LEADER BOARD PAGE"),
+            types.KeyboardButton("DELETE MY PROFILE"),
         )
 
         msg = app.send_message(
@@ -179,7 +184,7 @@ def start_the_game(message):
                 "status": "in_progress",
             }
 
-            thegame_url = api_url + "thegame"
+            thegame_url = api_url + "/thegame"
             response = requests.post(thegame_url, json=(payload))
 
             if response.status_code == 201:
@@ -210,7 +215,7 @@ def start_the_game(message):
                     chat,
                     f"YOUR ID IS NOT EXISTS",
                 )
-                msg = app.send_message(chat, "INTER YOUR NAME")
+                msg = app.send_message(chat, "ENTER YOUR NAME")
                 app.register_next_step_handler(msg, user_registration)
 
         post_thegame_data()
@@ -218,107 +223,130 @@ def start_the_game(message):
 
 def game_process(message):
     chat = message.chat.id
-    the_game_id_url = api_url + f"thegame/{message.from_user.id}"
+    the_game_id_url = api_url + f"/thegame/{message.from_user.id}"
 
-    if message.text == "CHECK LOCATION":
-        if message.location:
-            user_current_coords = {
-                "latitude": message.location.latitude,
-                "longitude": message.location.longitude,
+    if message.location:
+        user_current_coords = {
+            "latitude": message.location.latitude,
+            "longitude": message.location.longitude,
+        }
+        response = requests.get(the_game_id_url)
+        response_json = response.json()
+        print(response_json)
+        game_current_point = {
+            "latitude": response_json["latitude"],
+            "longitude": response_json["longitude"],
+        }
+        print(game_current_point)
+        # IF USER IN AREA
+        if distance_between(user_current_coords, game_current_point) < 1:
+            user_current_coords = {}  # clear the user location
+            payload = {
+                "status": "done",
             }
-            response = requests.get(the_game_id_url)
-            response_json = response.json()
-
-            game_current_point = {
-                "latitude": response_json["latitude"],
-                "longitude": response_json["longitude"],
-            }
-            # IF USER IN AREA
-            if distance_between(user_current_coords, game_current_point) < 9:
-                user_current_coords = {}
+            response = requests.put(the_game_id_url, json=(payload))
+            result = response.status_code
+            if result == 200:
+                app.send_message(chat, "GAME ENDED. SCORE + 1")
                 # add buttons
                 markup_reply_resize = types.ReplyKeyboardMarkup(
                     resize_keyboard=True, one_time_keyboard=True
                 )
-                markup_reply_resize.add(
-                    types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-                )
+                menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
 
                 msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
                 app.register_next_step_handler(msg, menu_listener)
 
-            # IFb
-            #  USER NOT IN AREA
-            if distance_between(user_current_coords, game_current_point) > 9:
-                # add BUTTONS
-                markup_reply_resize = types.ReplyKeyboardMarkup(
-                    resize_keyboard=True, one_time_keyboard=True
-                )
-                markup_reply_resize.add(
-                    types.KeyboardButton("CHECK LOCATION", request_location=True),
-                    types.KeyboardButton("STOP THE GAME"),
-                )
+        # IFb
+        #  USER NOT IN AREA
+        if distance_between(user_current_coords, game_current_point) > 1:
+            # add BUTTONS
+            markup_reply_resize = types.ReplyKeyboardMarkup(
+                resize_keyboard=True, one_time_keyboard=True
+            )
+            markup_reply_resize.add(
+                types.KeyboardButton("CHECK LOCATION", request_location=True),
+                types.KeyboardButton("STOP THE GAME"),
+            )
 
-                msg = app.send_message(
-                    chat, "GET CLOSER", reply_markup=markup_reply_resize
-                )
-                app.register_next_step_handler(msg, game_process)
+            msg = app.send_message(chat, "GET CLOSER", reply_markup=markup_reply_resize)
+            app.register_next_step_handler(msg, game_process)
 
     if message.text == "STOP THE GAME":
         response = requests.delete(the_game_id_url)
-        return
+        # add buttons
+        markup_reply_resize = types.ReplyKeyboardMarkup(
+            resize_keyboard=True, one_time_keyboard=True
+        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+        app.send_message(chat, "CANCELLATION")
+        msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
+        app.register_next_step_handler(msg, menu_listener)
 
 
 def options_menu_listener(message):
     chat = message.chat.id
     if message.text == "EDIT NAME":
-        msg = app.send_message(chat, "INTER NEW NAME")
+        msg = app.send_message(chat, "ENTER NEW NAME")
         app.register_next_step_handler(msg, user_registration)
 
     if message.text == "SHOW MY SCORE":
-        response = requests.get(api_url + f"thegame/{message.from_user.id}")
+        response = requests.get(api_url + f"/thegame/{message.from_user.id}")
         response_json = response.json()
-        result = response_json["result"]
+        result = response_json["score"]
         msg = app.send_message(chat, f"YOUR SCORE: {len(result)}")
         # add buttons
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
         )
-        markup_reply_resize.add(
-            types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+
         # go to menu
         msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
 
     if message.text == "GET ME MY LOGIN KEY":
-        response_get = requests.get(api_url + f"users/{message.from_user.id}")
-        response_get_json = response_get.json()
-        login_key = response_get_json["user_login_key"]
+        response = requests.get(api_url + f"/users/{message.from_user.id}")
+        response_json = response.json()
+        login_key = response_json["login_key"]
         app.send_message(chat, f"YOUR LOGIN KEY: {login_key}")
 
         # add buttons
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
         )
-        markup_reply_resize.add(
-            types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+
         # go to menu
         msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
 
     if message.text == "GO TO LEADER BOARD PAGE":
-        return
+        # leader board page
+        app.send_message(chat, "http://localhost:5000/userlist")
+
+        # add buttons
+        markup_reply_resize = types.ReplyKeyboardMarkup(
+            resize_keyboard=True, one_time_keyboard=True
+        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+
+        # go to menu
+        msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
+        app.register_next_step_handler(msg, menu_listener)
+
+    if message.text == "DELETE MY PROFILE":
+        msg = app.send_message(message.chat.id, "ALL DATA DELETED. RESTART BOT")
+        requests.delete(api_url + f"/users/{message.from_user.id}")
+        requests.delete(api_url + f"/thegame/{message.from_user.id}")
 
     if message.text == "BACK TO MENU":
         # add buttons
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
         )
-        markup_reply_resize.add(
-            types.KeyboardButton("START GAME"), types.KeyboardButton("OPTIONS")
-        )
+        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
+
         # go to menu
         msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
