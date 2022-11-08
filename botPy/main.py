@@ -145,7 +145,6 @@ def menu_listener(message):
         markup_reply_resize.add(
             types.KeyboardButton("EDIT NAME"),
             types.KeyboardButton("SHOW MY SCORE"),
-            types.KeyboardButton("GET ME MY LOGIN KEY"),
             types.KeyboardButton("GO TO LEADER BOARD PAGE"),
             types.KeyboardButton("DELETE MY PROFILE"),
         )
@@ -294,7 +293,7 @@ def options_menu_listener(message):
         response = requests.get(api_url + f"/thegame/{message.from_user.id}")
         response_json = response.json()
         result = response_json["score"]
-        msg = app.send_message(chat, f"YOUR SCORE: {len(result)}")
+        msg = app.send_message(chat, f"YOUR SCORE: {result}")
         # add buttons
         markup_reply_resize = types.ReplyKeyboardMarkup(
             resize_keyboard=True, one_time_keyboard=True
@@ -304,26 +303,26 @@ def options_menu_listener(message):
         # go to menu
         msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
         app.register_next_step_handler(msg, menu_listener)
+    # not use:
+    # if message.text == "GET ME MY LOGIN KEY":
+    #     response = requests.get(api_url + f"/users/{message.from_user.id}")
+    #     response_json = response.json()
+    #     login_key = response_json["login_key"]
+    #     app.send_message(chat, f"YOUR LOGIN KEY: {login_key}")
 
-    if message.text == "GET ME MY LOGIN KEY":
-        response = requests.get(api_url + f"/users/{message.from_user.id}")
-        response_json = response.json()
-        login_key = response_json["login_key"]
-        app.send_message(chat, f"YOUR LOGIN KEY: {login_key}")
+    #     # add buttons
+    #     markup_reply_resize = types.ReplyKeyboardMarkup(
+    #         resize_keyboard=True, one_time_keyboard=True
+    #     )
+    #     menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
 
-        # add buttons
-        markup_reply_resize = types.ReplyKeyboardMarkup(
-            resize_keyboard=True, one_time_keyboard=True
-        )
-        menu_buttons_add(markup_reply_resize)  # MENU BUTTONS ADD
-
-        # go to menu
-        msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
-        app.register_next_step_handler(msg, menu_listener)
+    #     # go to menu
+    #     msg = app.send_message(chat, "MENU", reply_markup=markup_reply_resize)
+    #     app.register_next_step_handler(msg, menu_listener)
 
     if message.text == "GO TO LEADER BOARD PAGE":
         # leader board page
-        app.send_message(chat, "http://localhost:5000/userlist")
+        app.send_message(chat, "http://localhost:3000")
 
         # add buttons
         markup_reply_resize = types.ReplyKeyboardMarkup(

@@ -1,0 +1,11 @@
+version: '3.3'
+services:
+    client:
+        build: .
+        restart: always
+        command: npm start
+        volumes:
+            - .:/usr/client/
+            - /usr/client/node_modules
+        ports:
+            - '3000:3000'

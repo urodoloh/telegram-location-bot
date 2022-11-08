@@ -1,11 +1,14 @@
 import os
+from unicodedata import name
 import psycopg2
 from dotenv import load_dotenv
 from flask import Flask, request
+from flask_cors import CORS
 
 load_dotenv()  # loads variables from .env file into environment
 
 app = Flask(__name__)
+CORS(app)
 url = os.environ.get("DATABASE_URL")  # gets variables from environment
 connection = psycopg2.connect(url)
 
@@ -18,14 +21,17 @@ INSERT_USERS = "INSERT INTO users (user_id, user_name, user_login_key) VALUES (%
 INSERT_THEGAMEDATA = "INSERT INTO thegame (user_id, latitude, longitude, status) VALUES (%s, %s, %s, %s);"
 
 # GET ALL DATA FROM TABLE
-GET_USERLIST_FROM_USERS_TABLE = "SELECT user_name FROM users"
+GET_USERLIST_FROM_USERS_TABLE = "SELECT user_id, user_name FROM users"
 GET_GAMELIST_FROM_THEGAME_TABLE = "SELECT * FROM thegame"
 # GET BY ID
-GET_USERBYID_FROM_USERS_TABLE = "SELECT * FROM users WHERE user_id = (%s)"
+GET_USERBYID_FROM_USERS_TABLE = (
+    "SELECT user_id, user_name FROM users WHERE user_id = (%s)"
+)
 GET_GAME_BYUSERID_FROM_THEGAME_TABLE = "SELECT * FROM thegame WHERE user_id = (%s)"
 GET_GAMES_IN_PROGRESS_WHERE_USER_ID_FROM_THE_GAME = (
-    "SELECT * FROM thegame WHERE user_id = (%s) AND status = 'in_progress'"
+    "SELECT * FROM thegame WHERE user_id = (%s) AND status = 'in_progress' LIMIT 10"
 )
+GET_ENDED_GAMES_FROM_THEGAME_TABLE = "SELECT users.user_id, user_name, thegame.status FROM users RIGHT OUTER JOIN thegame ON users.user_id = thegame.user_id WHERE status = 'done'"
 GET_ENDED_GAMES_WHERE_USER_ID_FROM_THEGAME = (
     "SELECT * FROM thegame WHERE user_id = (%s) AND status = 'done'"
 )
@@ -38,11 +44,9 @@ DELETE_TABLE_USERS = "DROP TABLE users CASCADE"
 DELETE_TABLE_THEGAME = "DROP TABLE thegame"
 # DELETE BY ID
 DELETE_USER_BY_ID_RETURN_USERNAME = (
-    "DELETE FROM users WHERE user_id = (%s) RETURNING user_name"
+    "DELETE FROM users WHERE user_id = (%s) RETURNING user_name CASCADE"
 )
-DELETE_GAME_BY_USER_ID_RETURN_USER_ID = (
-    "DELETE FROM thegame WHERE user_id = (%s) RETURNING user_id"
-)
+DELETE_GAME_BY_USER_ID_RETURN_USER_ID = "DELETE FROM thegame WHERE user_id = (%s) AND status = 'in_progress' RETURNING user_id"
 
 
 # POST ROUTES>>>>>>>>>>>>>
@@ -103,6 +107,30 @@ def add_thegame():
 
 
 # GET ROUTES>>>>>>>
+# all users user_id, user_name
+@app.get("/api/users")
+def get_userlist():
+    with connection:
+        with connection.cursor() as cursor:
+
+            # cursor.execute(CREATE_USERS_TABLE)
+            try:
+                cursor.execute(GET_USERLIST_FROM_USERS_TABLE)
+                userlist_data = cursor.fetchall()
+                userlist = []
+                for el in userlist_data:
+                    list_el = list(el)
+                    user_id = list_el[0]
+                    user_name = list_el[1]
+                    userlist.append({"user_id": user_id, "user_name": user_name})
+                status_code = 200
+            except:
+                user_id = "404"
+                user_name = "404"
+                status_code = 404
+    return {"userlist": userlist}, status_code
+
+
 # users - get user by id
 @app.get("/api/users/<int:user_id>")
 def get_user_by_user_id(user_id):
@@ -117,27 +145,44 @@ def get_user_by_user_id(user_id):
                 cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
                 name = cursor.fetchone()[1]
 
-                cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
-                login_key = cursor.fetchone()[2]
+                # cursor.execute(GET_USERBYID_FROM_USERS_TABLE, (user_id,))
+                # login_key = cursor.fetchone()[2]
             except:
                 id = []
                 name = []
-                login_key = []
+                # login_key = []
 
-    return {"user_id": id, "name": name, "login_key": login_key}, 200
+    return {"user_id": id, "name": name}, 200
 
 
-# all users with their score
-@app.get("/api/users")
-def get_userlist():
+# get ended games with users
+@app.get("/api/thegame")
+def get_users_with_their_score():
     with connection:
         with connection.cursor() as cursor:
-
-            # cursor.execute(CREATE_USERS_TABLE)
-            cursor.execute(GET_USERLIST_FROM_USERS_TABLE)
-            userlist_data = cursor.fetchall()
-
-    return {"userlist": userlist_data}, 200
+            try:
+                cursor.execute(GET_ENDED_GAMES_FROM_THEGAME_TABLE)
+                thegames_data = cursor.fetchall()
+                thegames = []
+                for el in thegames_data:
+                    list_el = list(el)
+                    user_id = list_el[0]
+                    user_name = list_el[1]
+                    status = list_el[2]
+                    thegames.append(
+                        {"user_id": user_id, "user_name": user_name, "status": status}
+                    )
+                status_code = 200
+            except:
+                thegames = []
+                user_id = None
+                user_name = None
+                status = None
+                thegames.append(
+                    {"user_id": user_id, "user_name": user_name, "status": status}
+                )
+                status_code = 404
+    return {"games": thegames}, status_code
 
 
 # user_score_check and
@@ -146,13 +191,16 @@ def get_ended_games(user_id):
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_THEGAME_TABLE)
-
             try:
                 cursor.execute(
                     GET_ENDED_GAMES_WHERE_USER_ID_FROM_THEGAME,
                     (user_id,),
                 )
-                ended_games = cursor.fetchall()
+                ended_games = len(cursor.fetchall())
+            except:
+                ended_games = 0
+
+            try:
                 cursor.execute(
                     GET_GAMES_IN_PROGRESS_WHERE_USER_ID_FROM_THE_GAME,
                     (user_id,),
@@ -165,7 +213,6 @@ def get_ended_games(user_id):
                 longitude = cursor.fetchone()[3]
                 message = "all works"
             except:
-                ended_games = []
                 latitude = 0.0
                 longitude = 0.0
                 message = "table or id not exists"

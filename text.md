@@ -59,3 +59,68 @@ All your information: {
     #     types.KeyboardButton('START GAME'),
     #     types.KeyboardButton('OPTIONS')
     #     )
+
+
+        const list = useGetUserlist();
+    const notFoundMessage = 'Not Found'
+    if(!list) return null
+    async function mapUsersScore(){
+        if (!list) return null;
+        await Promise.all(list.map(async(element:UserI)=>{
+        const user_score = useGetUserScore(element.userId)
+         return (
+            <div>
+                <h1>{element.userName} </h1>
+                <h2>{user_score}</h2>
+            </div>
+         )
+       })
+    )}
+
+    return mapUsersScore().then((value)=>{
+        const usersArray = value;
+        return (
+            <div>
+                <h1>Leaderboard</h1>
+                <h1>{usersArray}</h1>
+            </div>
+        )
+    })
+}
+
+const [list, setList] = useState<UserlistI>();
+    const [isError, setIsError] = useState<boolean>(false);
+    
+    useEffect(() => {
+        GetAPI.getUsers()
+            .then((data) => {
+                setList(data)
+                console.log("useGetUserlist: true");
+            })
+            .catch((err) => {
+                setIsError(true);
+                console.log("useGetUserlist:", isError);
+            });
+    }, []);
+
+
+
+     if xOrY == 0: #Y
+        if minus_or_plus() > 0: # +X
+            if minus_or_plus() > 0: #+X and +Y
+                return
+            return
+        if minus_or_plus() == 0: # -X
+            if minus_or_plus() > 0: #+X and +Y
+                return
+            return
+
+    elif xOrY > 0: #Y
+        if minus_or_plus() > 0: # +Y
+            if minus_or_plus() > 0: #+Y and +X
+                return
+            return
+        if minus_or_plus() == 0: # -Y
+            if minus_or_plus() > 0: #-Y and +X
+                return
+            return

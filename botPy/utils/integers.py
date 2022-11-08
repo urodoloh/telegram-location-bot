@@ -10,7 +10,7 @@ TEN_KM_LONG = 0.08043778 * 2
 ELEVEN_KM_LAT = 0.044240779 * 2
 ELEVEN_KM_LONG = 0.088481558 * 2
 
-
+# LONGITUDE -180 to +180
 def get_random_long():
     num = round(uniform(0, 180), SPREAD_NUMBER)
     minusOrPlus = randrange(0, 2)
@@ -57,8 +57,8 @@ PLUS = "plus"
 
 def minus_or_plus():
     if randrange(0, 1) == 0:
-        return MINUS
-    return PLUS
+        return -1
+    return 1
 
 
 x = 0
@@ -72,41 +72,39 @@ def x_or_y():
 
 
 def point_at_distance(input):
-    coord = {}
+    # dict for return result
+    coords = {}
     latitude = input["latitude"]
     longitude = input["longitude"]
 
-    if x_or_y() == x:
-        if minus_or_plus() == MINUS:
-            coord["latitude"] = latitude - range_ten_eleven_x()
-        if minus_or_plus() == PLUS:
-            coord["latitude"] = latitude + range_ten_eleven_x()
-        if minus_or_plus() == MINUS:
-            coord["longitude"] = longitude - range_zero_eleven_x()
-        if minus_or_plus() == PLUS:
-            coord["longitude"] = longitude + range_zero_eleven_x()
+    # it will store the random distance which we add to input coords:
+    randomSide = {}
 
-        return coord
+    # this is a function, because you need to call
+    #  it for each variable separately:
+    def minus_or_plus():
+        if randrange(0, 2) == 0:
+            return -1
+        return 1
 
-    if x_or_y() == y:
-        if minus_or_plus() == MINUS:
-            coord["longitude"] = longitude - range_ten_eleven_y()
-        if minus_or_plus() == PLUS:
-            coord["longitude"] = longitude + range_ten_eleven_y()
+    # called once:
+    xOrY = randrange(0, 2)  # 0 - x, 1 - y
 
-        if minus_or_plus() == MINUS:
-            coord["latitude"] = latitude - range_zero_eleven_x()
-        if minus_or_plus() == PLUS:
-            coord["latitude"] = latitude + range_zero_eleven_x()
+    if xOrY == 0:  # X
+        # plus or minus X on 10~11 kilometers
+        randomSide["latitude"] = range_ten_eleven_x() * minus_or_plus()
+        # plus or minus Y on 0~11 kilometers
+        randomSide["longitude"] = range_zero_eleven_y() * minus_or_plus()
+    elif xOrY > 0:  # Y
+        # plus or minus Y on 10~11 kilometers
+        randomSide["latitude"] = range_ten_eleven_y() * minus_or_plus()
+        # plus or minus X on 0~11 kilometers
+        randomSide["longitude"] = range_zero_eleven_x() * minus_or_plus()
 
-        return coord
+    coords["latitude"] = latitude + randomSide["latitude"]
+    coords["longitude"] = longitude + randomSide["longitude"]
 
-
-def tests():
-    # print(x_or_y)
-    # print(range_ten_eleven_x, range_zero_eleven_y)
-    print(random_coordinates)
-    print(point_at_distance(random_coordinates))
+    return coords
 
 
 # x or y
@@ -155,7 +153,7 @@ def tests_distance():
 
     print(point_at_distance(coordinates))
 
-    # print(distance_between(random_coordinates, coordinates), "K.M")
+    print(distance_between(random_coordinates, coordinates), "K.M")
 
 
-# tests_distance()
+tests_distance()
