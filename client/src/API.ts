@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { GameDataI, UserlistI, EndedGamesResponse } from './types/getresponse.interface';
+import { EndedGamesResponse, User } from './types/getresponse.interface';
 
 
 const instance = axios.create({
@@ -17,7 +17,6 @@ const requests = {
 };
 
 export const GetAPI = {
-    getUsers: (): Promise<UserlistI> => requests.get('users'),
-    getEndedGamesForUser: (user_id: number): Promise<GameDataI>  => requests.get(`thegame/${user_id}`),
+    getUsers: (): Promise<{userlist: User[]}> => requests.get('users'),
 	getEndedGames: (): Promise<EndedGamesResponse> => requests.get('thegame')
 }

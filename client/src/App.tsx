@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import styled from 'styled-components';
-import UserlistData from './components/UserlistData';
+import { LeaderBoard } from './components/Leaderboard';
 import { AppDiv } from './styles/styledComponents';
-  
 
 function App() {
 
 
   return (
     <AppDiv>
-      <UserlistData/>
+      <LeaderBoard/>
     </AppDiv>
   );
 }

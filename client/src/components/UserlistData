@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react';
 import styled from 'styled-components';
 import { useGetEndedGames } from '../hooks/useGetEndedGames';
@@ -22,14 +23,16 @@ export default function UserlistData() {
   
 
   const [searchResult, setSearchResult] = useState([{}]);
-  const [notFound, setNotFound] = useState(true)
-  
+  const [notFound, setNotFound] = useState(true);
+
+  const clearResults = () => setSearchResult([{}]);
+
   const searchText = (text:string) => {
     const result = sortedGamesByScore.filter(user => user.user === text);
     console.log(result.length);
     console.log(notFound);
     
-    if (result.length >= 1){
+    if (result){
       setSearchResult(result)
       setNotFound(false)
     } 
@@ -54,7 +57,7 @@ export default function UserlistData() {
 
   
   return (<UserlistDataDiv>
-      <SearchBar input={(text:string) => searchText(text)}/>
+      <SearchBar input={searchText} clearResults={clearResults}/>
       {/* <div>{sortedUserlist}</div> */}
       <div>{renderedResults()}</div>
     </UserlistDataDiv>)

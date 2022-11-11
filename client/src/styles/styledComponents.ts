@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-export const UserlistDataDiv = styled.div`
+export const LeaderboardWrapper = styled.div`
   width: 400px;
   height: 600px;
   border: 15px solid black;

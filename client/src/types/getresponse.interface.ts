@@ -1,28 +1,25 @@
 
-interface UserI {
+export interface User {
     user_id: number
     user_name: string
 }
 
-interface UserlistI{
-    userlist: UserI[]
-}
 
-interface GameDataI {
+export interface GameDataI {
     score: number
     latitude: number
     longitude: number
     message: string
 }
 
-interface LeaderboardPlayerI {
+export interface LeaderboardPlayerI {
     user_id: number
     user_name: string
     status: string
 }
 
 
-interface SortedUsers {
+export interface SortedUsers {
     [user_name: string]: LeaderboardPlayerI[]
 }
 
@@ -31,7 +28,7 @@ interface sortedGamesByScoreI {
     games: LeaderboardPlayerI[]
 }[]
 
-interface EndedGamesResponse{
+export interface EndedGamesResponse{
     games: LeaderboardPlayerI[]
 }
 
@@ -42,4 +39,3 @@ interface InputPropsI{
     value?: string | undefined
 }
 
-export type {UserI, sortedGamesByScoreI,  SortedUsers, GameDataI, EndedGamesResponse, LeaderboardPlayerI, UserlistI}
