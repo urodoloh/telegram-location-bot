@@ -14,11 +14,11 @@ connection = psycopg2.connect(url)
 
 # CREATE TABLES
 CREATE_USERS_TABLE = "CREATE TABLE IF NOT EXISTS users (user_id INT NOT NULL, user_name VARCHAR(255) NOT NULL, user_login_key VARCHAR(255) NOT NULL, PRIMARY KEY(user_id));"
-CREATE_THEGAME_TABLE = "CREATE TABLE IF NOT EXISTS thegame (game_id INT GENERATED ALWAYS AS IDENTITY, user_id INT, latitude FLOAT NOT NULL, longitude FLOAT NOT NULL, status TEXT, PRIMARY KEY(game_id), CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE);"
+CREATE_THEGAME_TABLE = "CREATE TABLE IF NOT EXISTS thegame (game_id INT GENERATED ALWAYS AS IDENTITY, user_id INT, latitude FLOAT NOT NULL, longitude FLOAT NOT NULL, status TEXT, date TIMESTAMP, PRIMARY KEY(game_id), CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE);"
 
 # INSERT INTO TABLES
 INSERT_USERS = "INSERT INTO users (user_id, user_name, user_login_key) VALUES (%s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET user_name = (%s)"
-INSERT_THEGAMEDATA = "INSERT INTO thegame (user_id, latitude, longitude, status) VALUES (%s, %s, %s, %s);"
+INSERT_THEGAMEDATA = "INSERT INTO thegame (user_id, latitude, longitude, status, date) VALUES (%s, %s, %s, %s, current_timestamp);"
 
 # GET ALL DATA FROM TABLE
 GET_USERLIST_FROM_USERS_TABLE = "SELECT user_id, user_name FROM users"
@@ -31,7 +31,7 @@ GET_GAME_BYUSERID_FROM_THEGAME_TABLE = "SELECT * FROM thegame WHERE user_id = (%
 GET_GAMES_IN_PROGRESS_WHERE_USER_ID_FROM_THE_GAME = (
     "SELECT * FROM thegame WHERE user_id = (%s) AND status = 'in_progress' LIMIT 10"
 )
-GET_ENDED_GAMES_FROM_THEGAME_TABLE = "SELECT users.user_id, user_name, thegame.status FROM users RIGHT OUTER JOIN thegame ON users.user_id = thegame.user_id WHERE status = 'done'"
+GET_ENDED_GAMES_FROM_THEGAME_TABLE = "SELECT users.user_id, user_name, thegame.status, thegame.date FROM users RIGHT OUTER JOIN thegame ON users.user_id = thegame.user_id WHERE status = 'done'"
 GET_ENDED_GAMES_WHERE_USER_ID_FROM_THEGAME = (
     "SELECT * FROM thegame WHERE user_id = (%s) AND status = 'done'"
 )
@@ -169,8 +169,9 @@ def get_users_with_their_score():
                     user_id = list_el[0]
                     user_name = list_el[1]
                     status = list_el[2]
+                    date = list_el[3]
                     thegames.append(
-                        {"user_id": user_id, "user_name": user_name, "status": status}
+                        {"user_id": user_id, "user_name": user_name, "status": status, "date": date}
                     )
                 status_code = 200
             except:
@@ -178,11 +179,12 @@ def get_users_with_their_score():
                 user_id = None
                 user_name = None
                 status = None
+                date = None
                 thegames.append(
-                    {"user_id": user_id, "user_name": user_name, "status": status}
+                    {"user_id": user_id, "user_name": user_name, "status": status, "date": date}
                 )
                 status_code = 404
-    return {"games": thegames}, status_code
+    return thegames, status_code
 
 
 # user_score_check and

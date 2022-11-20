@@ -1,16 +1,7 @@
-import { useState } from 'react';
-import styled from 'styled-components';
-import { LeaderBoard } from './components/Leaderboard';
-import { AppDiv } from './styles/styledComponents';
+import { LeaderBoard } from "./components/Leaderboard";
 
 function App() {
-
-
-  return (
-    <AppDiv>
-      <LeaderBoard/>
-    </AppDiv>
-  );
+  return <LeaderBoard />;
 }
 
 export default App;

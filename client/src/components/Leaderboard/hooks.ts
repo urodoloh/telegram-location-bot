@@ -1,53 +1,62 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { GetAPI } from '../../API';
-import { User, LeaderboardPlayerI, SortedUsers } from "../../types/getresponse.interface";
 
-
-
+import { getEndedGames } from "../../services/getUsersData";
+import {
+  Game,
+  SortedUsers,
+  UserGames,
+} from "../../services/getUsersData/types";
 
 export function useLeaderBoard() {
-    const [usersData, setUsersData] = useState<LeaderboardPlayerI[]>([]);
-    const [usernameFilter, setUsernameFilter] = useState('');
+  const [gamesData, setGamesData] = useState<Game[]>([]);
+  const [usernameFilter, setUsernameFilter] = useState<string>("");
 
-    useEffect(() => {
-            GetAPI.getEndedGames().then((data) => {
-                setUsersData(data.games);
-            });
-    }, []);
+  useEffect(() => {
+    getEndedGames().then((data) => {
+      setGamesData(data);
+    });
+  }, []);
 
-    const sortedGamesByUsers = useMemo(()=>{
-        const groupedGames:SortedUsers = {};
+  const sortedGamesByUsers = useMemo(() => {
+    const groupedGames: SortedUsers = {};
 
-        usersData.map((game)=>{
-            if(groupedGames[game.user_name]){
-                groupedGames[game.user_name] = [...groupedGames[game.user_name], game];
-            } else {
-                groupedGames[game.user_name] = [game]
-            }
-        });
+    gamesData.map((game) => {
+      if (groupedGames[game.user_name]) {
+        let lastDate = game.date;
+        if (lastDate < groupedGames[game.user_name].date) {
+          lastDate = groupedGames[game.user_name].date;
+        }
+        groupedGames[game.user_name] = {
+          games: [...groupedGames[game.user_name].games, game],
+          date: lastDate,
+        };
+      } else {
+        const lastDate = game.date;
+        groupedGames[game.user_name] = { games: [game], date: lastDate };
+      }
+    });
 
-        const gamesList =  Object.keys(groupedGames).map((user, userIndex) => ({user: user, games: groupedGames[user].length, key: userIndex}));
-        const sortedGames = gamesList.sort((a, b) => (b.games - a.games));
-        
-        
-        return sortedGames
+    const gamesList: UserGames[] = Object.keys(groupedGames).map((user) => ({
+      user: user,
+      score: groupedGames[user].games.length,
+      date: groupedGames[user].date,
+    }));
 
-    }, [usersData])
+    const filteredGames: UserGames[] = usernameFilter
+      ? gamesList.filter((game) => game.user.includes(usernameFilter))
+      : [...gamesList];
 
+    const sortedGames = filteredGames.sort((a, b) => b.score - a.score);
 
-    const searchOnChangeHanler = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    return sortedGames;
+  }, [gamesData, usernameFilter]);
+
+  const searchOnChangeHandler = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setUsernameFilter(e.target.value);
-     }, [setUsernameFilter])
-     
-    
-    const users = useMemo(() => {
-        const usersFilterResult = sortedGamesByUsers.filter((user) => user.user.includes(usernameFilter));
-        
-        
-        return usersFilterResult
-    }, [usersData, usernameFilter])
-   
+    },
+    [setUsernameFilter]
+  );
 
-    return {searchOnChangeHanler, users}
-   }
-
+  return { searchOnChangeHandler, sortedGamesByUsers };
+}
