@@ -10,8 +10,8 @@ export interface Game {
   date: string;
 }
 
-export interface SortedUsers {
-  [user_name: string]: { games: Game[]; date: string };
+export interface SortedGames {
+  [user_name: string]: { games: Game[] };
 }
 
 export interface EndedGamesResponse {
@@ -21,5 +21,10 @@ export interface EndedGamesResponse {
 export interface UserGames {
   user: string;
   score: number;
-  date: string;
+  lastGameDate: string | null;
+}
+
+export interface SortByOption {
+  sort: "username" | "score";
+  order: 1 | -1;
 }

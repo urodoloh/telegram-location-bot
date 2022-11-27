@@ -3,11 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getEndedGames } from "../../services/getUsersData";
 import {
   Game,
-  SortedUsers,
+  SortedGames,
   UserGames,
+  SortByOption,
 } from "../../services/getUsersData/types";
 
 export function useLeaderBoard() {
+  const [sortBy, setSortBy] = useState<SortByOption>({
+    sort: "score",
+    order: 1,
+  });
   const [gamesData, setGamesData] = useState<Game[]>([]);
   const [usernameFilter, setUsernameFilter] = useState<string>("");
 
@@ -17,39 +22,101 @@ export function useLeaderBoard() {
     });
   }, []);
 
-  const sortedGamesByUsers = useMemo(() => {
-    const groupedGames: SortedUsers = {};
+  const getLastGameDate = (games: Game[]) => {
+    const sortedGames = [...games];
+
+    if (games.length === 0) {
+      return null;
+    }
+
+    sortedGames.sort((a, b) => {
+      const aDate: Date = new Date(a.date);
+      const bDate: Date = new Date(b.date);
+
+      return bDate.getTime() - aDate.getTime();
+    });
+
+    return sortedGames[0].date;
+  };
+
+  const sortedGames = useMemo(() => {
+    const groupedGames: SortedGames = {};
 
     gamesData.map((game) => {
       if (groupedGames[game.user_name]) {
-        let lastDate = game.date;
-        if (lastDate < groupedGames[game.user_name].date) {
-          lastDate = groupedGames[game.user_name].date;
-        }
         groupedGames[game.user_name] = {
           games: [...groupedGames[game.user_name].games, game],
-          date: lastDate,
         };
       } else {
-        const lastDate = game.date;
-        groupedGames[game.user_name] = { games: [game], date: lastDate };
+        groupedGames[game.user_name] = { games: [game] };
       }
     });
 
     const gamesList: UserGames[] = Object.keys(groupedGames).map((user) => ({
       user: user,
       score: groupedGames[user].games.length,
-      date: groupedGames[user].date,
+      lastGameDate: getLastGameDate(groupedGames[user].games),
     }));
 
     const filteredGames: UserGames[] = usernameFilter
       ? gamesList.filter((game) => game.user.includes(usernameFilter))
       : [...gamesList];
 
-    const sortedGames = filteredGames.sort((a, b) => b.score - a.score);
+    if (sortBy?.sort === "username") {
+      filteredGames.sort((a, b) => {
+        if (a.user < b.user) {
+          return -1 * sortBy.order;
+        }
+        if (a.user > b.user) {
+          return 1 * sortBy.order;
+        }
+        return 0;
+      });
+    }
 
-    return sortedGames;
-  }, [gamesData, usernameFilter]);
+    if (sortBy?.sort === "score") {
+      filteredGames.sort((a, b) => (b.score - a.score) * sortBy.order);
+    }
+
+    return filteredGames;
+  }, [gamesData, usernameFilter, sortBy]);
+
+  const maxScore = useMemo(() => {
+    return sortedGames.reduce(
+      (max, currentGame) => Math.max(max, currentGame.score),
+      0
+    );
+  }, [sortedGames]);
+
+  const getGameScoreScale = useCallback(
+    (game: UserGames) => {
+      return 100 / (maxScore / game.score);
+    },
+    [maxScore]
+  );
+
+  const sortByHandler = useCallback(
+    (sort: SortByOption["sort"]) => {
+      setSortBy((prevSortBy) => {
+        return {
+          sort,
+          order:
+            prevSortBy !== undefined && prevSortBy.sort === sort
+              ? prevSortBy.order * -1
+              : 1,
+        } as SortByOption;
+      });
+    },
+    [setSortBy]
+  );
+
+  const sortByName = useCallback(() => {
+    sortByHandler("username");
+  }, [sortByHandler]);
+
+  const sortByScore = useCallback(() => {
+    sortByHandler("score");
+  }, [sortByHandler]);
 
   const searchOnChangeHandler = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,5 +125,13 @@ export function useLeaderBoard() {
     [setUsernameFilter]
   );
 
-  return { searchOnChangeHandler, sortedGamesByUsers };
+  return {
+    searchOnChangeHandler,
+    sortedGames,
+    sortByName,
+    sortByScore,
+    sortBy,
+    maxScore,
+    getGameScoreScale,
+  };
 }

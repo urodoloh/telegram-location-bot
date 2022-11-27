@@ -1,42 +1,72 @@
+import { useState } from "react";
 import ReactTooltip from "react-tooltip";
+import styled from "styled-components";
 
 import { useLeaderBoard } from "./hooks";
 import { S } from "./styles";
 
 export function LeaderBoard() {
-  const { searchOnChangeHandler, sortedGamesByUsers } = useLeaderBoard();
+  const {
+    searchOnChangeHandler,
+    sortedGames,
+    sortByScore,
+    sortByName,
+    getGameScoreScale,
+  } = useLeaderBoard();
 
   return (
-    <S.LeaderboardS>
-      <S.HeaderS>
-        <S.TitleS>Telegram Get-Point Game</S.TitleS>
-        <S.TitleS>Leaderboard Page</S.TitleS>
-        <S.HeaderSectionOneS>
-          <S.Subtitle>Username</S.Subtitle>
-          <S.Subtitle>Score</S.Subtitle>
-        </S.HeaderSectionOneS>
-      </S.HeaderS>
+    <S.Leaderboard>
+      <S.Header>
+        <S.Title>Leaderboard</S.Title>
+        <S.ColumnNames>
+          <S.UserTitle onClick={sortByName}>username</S.UserTitle>
 
-      <S.FilterS>
-        <input onChange={searchOnChangeHandler} placeholder="Enter username" />
-      </S.FilterS>
+          <S.ScoreTitle onClick={sortByScore}>score</S.ScoreTitle>
+        </S.ColumnNames>
+      </S.Header>
 
-      {sortedGamesByUsers.map((userGames, userGamesIndex) => (
-        <S.UserBlockS>
-          <div key={`user-games-${userGamesIndex}`}>
-            <p data-for={`user-games-${userGamesIndex}`} data-tip>
-              {userGames.user} {userGames.score}
-            </p>
-            <ReactTooltip id={`user-games-${userGamesIndex}`}>
-              <span>
-                {userGames.user} <br /> {userGames.date}
-              </span>
-            </ReactTooltip>
-          </div>
-        </S.UserBlockS>
-      ))}
+      <S.Main>
+        <S.FilterBlock>
+          <S.SearchIcon src={require("./icons/loupe.JPG")} />
+          <S.Input
+            onChange={searchOnChangeHandler}
+            placeholder="Enter username"
+          />
+        </S.FilterBlock>
 
-      <S.FooterS>BY URODOLOH</S.FooterS>
-    </S.LeaderboardS>
+        <S.UsersListColumn>
+          {sortedGames.map((userGames, userGamesIndex) => (
+            <S.UserBlock key={userGamesIndex}>
+              <S.UsernameBlock>
+                <S.Username data-for={`user-games-${userGamesIndex}`} data-tip>
+                  {userGames.user}
+                </S.Username>
+                <ReactTooltip id={`user-games-${userGamesIndex}`}>
+                  <span>
+                    {userGames.user} <br /> {userGames.lastGameDate}
+                  </span>
+                </ReactTooltip>
+              </S.UsernameBlock>
+
+              <S.ScoreBlock>
+                <S.ScoreValue>{userGames.score}</S.ScoreValue>
+
+                <S.Progress
+                  width={`${getGameScoreScale(userGames)}%`}
+                ></S.Progress>
+              </S.ScoreBlock>
+            </S.UserBlock>
+          ))}
+        </S.UsersListColumn>
+      </S.Main>
+
+      <S.Footer>
+        <h4>BY URODOLOH</h4>
+        <h5> my links:</h5>
+        <S.Link href="https://github.com/urodoloh/telegram-location-bot">
+          GitHub Page
+        </S.Link>
+      </S.Footer>
+    </S.Leaderboard>
   );
 }
